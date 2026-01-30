@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, ChangeEvent } from 'react'
 import AppLayout from '@/components/AppLayout'
 import PageSectionHeader from '@/components/prosuite-management/layout/PageSectionHeader'
-import { Card } from '@/components/ui/card'
+import { StatsGrid } from '@/components/prosuite-management/cards/StatsCard'
+import { Button } from '@/components/ui/button'
 import { prosuiteData } from '@/lib/prosuite-data'
+import { AlertTriangle, AlertCircle, CheckCircle, ListTodo, Plus, FileDown, Search } from 'lucide-react'
 
 export default function RisksPage() {
     const risks = prosuiteData.risk?.risks || []
-    const [filter, setFilter] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all')
+    const [searchQuery, setSearchQuery] = useState('')
 
     const getImpactLabel = (impactId: number): string => {
         const impactMap: { [key: number]: string } = {
@@ -30,104 +32,173 @@ export default function RisksPage() {
         return colorMap[impactId] || 'bg-gray-100 text-gray-800'
     }
 
-    const getStatusLabel = (isArchived: boolean): string => {
-        return isArchived ? 'Archived' : 'Active'
+    const getRiskCounts = () => {
+        const counts = {
+            total: risks.length,
+            critical: risks.filter(r => r.impact_rating_id === 4).length,
+            high: risks.filter(r => r.impact_rating_id === 3).length,
+            medium: risks.filter(r => r.impact_rating_id === 2).length,
+            low: risks.filter(r => r.impact_rating_id === 1).length,
+        }
+        return counts
     }
 
+    const riskCounts = getRiskCounts()
+
+    const statsItems = [
+        {
+            title: 'Total Risks',
+            number: riskCounts.total,
+            statColor: 'text-gray-600',
+            icon: <ListTodo size={20} />,
+        },
+        {
+            title: 'Critical Risks',
+            number: riskCounts.critical,
+            statColor: 'text-red-600',
+            icon: <AlertCircle size={20} />,
+        },
+        {
+            title: 'High Risks',
+            number: riskCounts.high,
+            statColor: 'text-orange-600',
+            icon: <AlertTriangle size={20} />,
+        },
+        {
+            title: 'Low Risks',
+            number: riskCounts.low,
+            statColor: 'text-green-600',
+            icon: <CheckCircle size={20} />,
+        },
+    ]
+
     const filteredRisks = risks.filter(risk => {
-        if (filter === 'all') return true
-        const impact = getImpactLabel(risk.impact_rating_id).toLowerCase()
-        return impact === filter
+        if (!searchQuery) return true
+        const query = searchQuery.toLowerCase()
+        return (
+            risk.title?.toLowerCase().includes(query) ||
+            risk.description?.toLowerCase().includes(query) ||
+            risk.risk_number?.toLowerCase().includes(query)
+        )
     })
 
     return (
         <AppLayout>
-            <div className="p-4 md:p-6 lg:p-8">
+            <div className="p-4 md:p-6 lg:p-8 space-y-6">
                 <PageSectionHeader
-                    title="Risk Management"
-                    subTitle="Manage and track organizational risks"
+                    title="Risk Register"
+                    subTitle="View and manage all active risks"
                     showImportExport={false}
-                    showAddButton={true}
-                    onAddClick={() => console.log('Add new risk')}
                     removePadding={false}
                 />
 
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-2 mb-6 bg-gray-50 rounded-lg p-1 w-fit">
-                    <button
-                        onClick={() => setFilter('all')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        All Risks ({risks.length})
-                    </button>
-                    <button
-                        onClick={() => setFilter('critical')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'critical' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Critical
-                    </button>
-                    <button
-                        onClick={() => setFilter('high')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'high' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        High
-                    </button>
-                    <button
-                        onClick={() => setFilter('medium')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'medium' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Medium
-                    </button>
-                    <button
-                        onClick={() => setFilter('low')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'low' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Low
-                    </button>
-                </div>
+                <StatsGrid stats={statsItems} />
 
-                {/* Risks Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredRisks.map((risk) => (
-                        <Card key={risk.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer">
-                            <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-gray-900 flex-1">
-                                    {risk.title || `Risk #${risk.id}`}
-                                </h3>
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${getImpactColor(risk.impact_rating_id)}`}>
-                                    {getImpactLabel(risk.impact_rating_id)}
-                                </span>
-                            </div>
-                            
-                            {risk.description && (
-                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                    {risk.description}
-                                </p>
-                            )}
-
-                            <div className="flex items-center justify-between text-xs text-gray-500">
-                                <span>Status: {getStatusLabel(risk.is_archived)}</span>
-                                <span>Risk Score: {risk.inherit_risk_score}</span>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-
-                {filteredRisks.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">No risks found for the selected filter.</p>
+                {/* Search and Actions Bar */}
+                <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200">
+                    <div className="flex-1 max-w-md relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchQuery}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                            className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006EAD]"
+                        />
                     </div>
-                )}
+                    
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm">
+                            <FileDown className="h-4 w-4 mr-2" />
+                            Export
+                        </Button>
+                        <Button size="sm" className="bg-[#006EAD] hover:bg-[#005a8c]">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Risk
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Risks Table */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Risk Number
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Description
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Impact Level
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Risk Score
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredRisks.map((risk) => (
+                                    <tr key={risk.id} className="hover:bg-gray-50 cursor-pointer">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {risk.risk_number || `STR-${String(risk.id).padStart(3, '0')}`}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-900">
+                                            {risk.title || `Risk #${risk.id}`}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-600 max-w-md truncate">
+                                            {risk.description || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${getImpactColor(risk.impact_rating_id)}`}>
+                                                {getImpactLabel(risk.impact_rating_id)}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                                                    risk.impact_rating_id === 4 ? 'bg-red-500' :
+                                                    risk.impact_rating_id === 3 ? 'bg-orange-500' :
+                                                    risk.impact_rating_id === 2 ? 'bg-blue-500' : 'bg-green-500'
+                                                }`}>
+                                                    {risk.inherit_risk_score || '-'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {filteredRisks.length === 0 && (
+                        <div className="text-center py-12">
+                            <p className="text-gray-500">No risks found.</p>
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm text-gray-700">
+                                Page 1 of 1 ({filteredRisks.length} items)
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" disabled>
+                                    Previous
+                                </Button>
+                                <Button variant="outline" size="sm" disabled>
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     )
