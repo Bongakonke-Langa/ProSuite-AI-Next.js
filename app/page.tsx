@@ -117,26 +117,38 @@ export default function Home() {
 
         {/* Tasks */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-          <PageSectionHeader
-            title="Tasks"
-            subTitle="Outstanding ProSuite tasks and todos"
-            showImportExport={false}
-            customAction={{
-              action: () => console.log('Add task'),
-            }}
-            removePadding={true}
-          />
-          
-          <div className="flex items-center gap-3 mt-4 mb-4">
-            <button className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
-              📝 New Tasks <span className="text-gray-500">3</span>
-            </button>
-            <button className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
-              🔄 In Progress <span className="text-gray-500">3</span>
-            </button>
-            <button className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
-              ✓ Completed <span className="text-gray-500">2</span>
-            </button>
+          <div className="flex items-center justify-between gap-4 pb-4">
+            {/* Title Section */}
+            <div className="flex items-center">
+              <span className="w-[4px] h-[38px] mr-3 bg-[#91BC4D]" />
+              <div>
+                <h2 className="text-xl font-bold text-[#006EAD]">Tasks</h2>
+                <p className="text-xs text-gray-500">Outstanding ProSuite tasks and todos</p>
+              </div>
+            </div>
+
+            {/* Tabs and Add Button */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1">
+                <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white rounded-md transition-colors flex items-center gap-2">
+                  <span className="text-blue-500">≡</span> New Tasks
+                </button>
+                <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white rounded-md transition-colors flex items-center gap-2">
+                  <span className="text-orange-500">⟳</span> In Progress
+                </button>
+                <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white rounded-md transition-colors flex items-center gap-2">
+                  <span className="text-green-500">✓</span> Completed
+                </button>
+              </div>
+              <button 
+                onClick={() => console.log('Add task')}
+                className="bg-[#006EAD] hover:bg-[#005a8c] text-white rounded-lg p-2 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">

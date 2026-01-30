@@ -4,11 +4,17 @@ import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Minimize2, Maximize2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import MessageRenderer from './MessageRenderer'
+
+interface MessageContent {
+    type: 'text' | 'image' | 'chart' | 'link'
+    data: any
+}
 
 interface Message {
     id: string
     role: 'user' | 'assistant' | 'system'
-    content: string
+    content: string | MessageContent[]
     timestamp: Date
 }
 
@@ -75,10 +81,24 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
 
             const data = await response.json()
 
+            // Create message content based on response type
+            let messageContent: string | MessageContent[]
+            
+            if (data.richContent && data.richContent.length > 0) {
+                // Rich content response with text, charts, images, navigation
+                messageContent = [
+                    { type: 'text', data: data.response },
+                    ...data.richContent
+                ]
+            } else {
+                // Simple text response
+                messageContent = data.response || "I'm sorry, I couldn't process that request."
+            }
+
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: data.response || "I'm sorry, I couldn't process that request.",
+                content: messageContent,
                 timestamp: new Date()
             }
 
@@ -181,7 +201,7 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                                 : 'bg-gray-100 text-gray-900'
                                         )}
                                     >
-                                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                        <MessageRenderer content={message.content} />
                                         <p className="text-xs mt-1 opacity-70">
                                             {message.timestamp.toLocaleTimeString([], {
                                                 hour: '2-digit',
@@ -211,7 +231,7 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                     onChange={(e) => setInputMessage(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     placeholder="Ask Mazwi anything..."
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006EAD] text-sm"
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006EAD] text-sm text-gray-900 placeholder:text-gray-400"
                                     disabled={isLoading}
                                 />
                                 <Button

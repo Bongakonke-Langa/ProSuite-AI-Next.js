@@ -51,6 +51,8 @@ interface PageSectionHeaderProps {
     onTemplateDownload?: (format: 'csv' | 'xlsx') => void;
     onAddEmployee?: () => void;
     showAddEmployee?: boolean;
+    showAddButton?: boolean;
+    onAddClick?: () => void;
     dataType?: string;
     textColor?: string;
     accentColor?: string;
@@ -69,6 +71,8 @@ const PageSectionHeader: React.FC<PageSectionHeaderProps> = ({
     onTemplateDownload,
     onAddEmployee,
     showAddEmployee = true,
+    showAddButton = false,
+    onAddClick,
     textColor = '#006EAD',
     accentColor = '#91BC4D',
     exportData = [],
@@ -147,7 +151,7 @@ const PageSectionHeader: React.FC<PageSectionHeaderProps> = ({
         setIsOpen(false)
     }
 
-    const hasActions = (pageActionButtons && pageActionButtons.length > 0) || customAction || fileField
+    const hasActions = (pageActionButtons && pageActionButtons.length > 0) || customAction || fileField || showAddButton
 
     const getAddActionLabel = () => {
         const baseName = title
@@ -271,16 +275,28 @@ const PageSectionHeader: React.FC<PageSectionHeaderProps> = ({
 
 
                 {hasActions && (
-                    <div className="w-full flex justify-end items-center">
+                    <div className="w-full flex justify-end items-center gap-2">
                         {customAction?.showBackButton && (
                             <Button
                                 variant="ghost"
                                 type="button"
                                 onClick={customAction.onBack}
-                                className="flex items-center gap-2 hover:bg-gray-100 mr-2"
+                                className="flex items-center gap-2 hover:bg-gray-100"
                                 aria-label="Go back"
                             >
                                 Back
+                            </Button>
+                        )}
+
+                        {showAddButton && onAddClick && (
+                            <Button
+                                type="button"
+                                onClick={onAddClick}
+                                className="flex items-center gap-2 bg-[#006EAD] text-white hover:bg-[#006EAD]/90 h-10 px-6 py-2"
+                                aria-label="Add new item"
+                            >
+                                <PlusIcon className="h-4 w-4" />
+                                <span>Add</span>
                             </Button>
                         )}
 
