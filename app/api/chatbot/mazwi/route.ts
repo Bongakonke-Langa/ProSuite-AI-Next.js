@@ -408,7 +408,7 @@ async function generateResponse(message: string, systemContext: string, systemDa
     // Risk-related queries
     if (lowerMessage.includes('risk')) {
         if (lowerMessage.includes('how many') || lowerMessage.includes('count')) {
-            const { risks } = systemData
+            const risks = systemData.risks
             let response = `You currently have **${risks.total} total risks** in the system:\n`
             response += `• Active: ${risks.active}\n`
             response += `• Critical: ${risks.critical}\n`
@@ -416,42 +416,28 @@ async function generateResponse(message: string, systemContext: string, systemDa
             response += `• Medium: ${risks.medium}\n`
             response += `• Low: ${risks.low}\n\n`
             
-            if (risks.examples.length > 0) {
+            if (risks.examples && risks.examples.length > 0) {
                 response += `**Recent Examples:**\n`
-                risks.examples.forEach((risk: any, index: number) => {
-                    response += `${index + 1}. "${risk.title}" - ${risk.severity} severity (${risk.status})\n`
-                })
+                for (let i = 0; i < risks.examples.length; i++) {
+                    const risk = risks.examples[i]
+                    response += `${i + 1}. ${risk.title} (${risk.severity})\n`
+                }
             }
             
             return {
                 text: response,
-                richContent: [
-                    {
-                        type: 'chart',
-                        data: {
-                            chartType: 'pie',
-                            title: 'Risk Distribution by Severity',
-                            data: [
-                                { name: 'Critical', value: risks.critical, color: '#DC2626' },
-                                { name: 'High', value: risks.high, color: '#F59E0B' },
-                                { name: 'Medium', value: risks.medium, color: '#3B82F6' },
-                                { name: 'Low', value: risks.low, color: '#10B981' }
-                            ]
-                        }
-                    },
-                    {
-                        type: 'navigation',
-                        data: {
-                            title: 'View All Risks',
-                            description: 'Go to Risk Management dashboard',
-                            path: '/risk-management/risks'
-                        }
+                richContent: [{
+                    type: 'navigation',
+                    data: {
+                        title: 'View All Risks',
+                        description: 'Go to Risk Management dashboard',
+                        path: '/risk-management/risks'
                     }
-                ]
+                }]
             }
         }
         if (lowerMessage.includes('high') || lowerMessage.includes('critical')) {
-            const { risks } = systemData
+            const risks = systemData.risks
             let response = `**Critical & High Risks Overview:**\n`
             response += `• Critical risks: ${risks.critical}\n`
             response += `• High risks: ${risks.high}\n\n`
@@ -465,14 +451,15 @@ async function generateResponse(message: string, systemContext: string, systemDa
             return createTextResponse(response)
         }
         if (lowerMessage.includes('example') || lowerMessage.includes('show me')) {
-            const { risks } = systemData
-            if (risks.examples.length > 0) {
+            const risks = systemData.risks
+            if (risks.examples && risks.examples.length > 0) {
                 let response = `**Current Risks in the System:**\n\n`
-                risks.examples.forEach((risk: any, index: number) => {
-                    response += `${index + 1}. **${risk.title}**\n`
+                for (let i = 0; i < risks.examples.length; i++) {
+                    const risk = risks.examples[i]
+                    response += `${i + 1}. **${risk.title}**\n`
                     response += `   - Severity: ${risk.severity}\n`
                     response += `   - Status: ${risk.status}\n\n`
-                })
+                }
                 return createTextResponse(response)
             }
             return createTextResponse("No risk examples available at the moment.")
@@ -659,11 +646,104 @@ async function generateResponse(message: string, systemContext: string, systemDa
         return createTextResponse("I'm here to help! I can assist you with:\n• Checking status of risks, assets, and incidents\n• Viewing compliance scores and audit logs\n• Understanding module data and analytics\n• Navigating the ProSuite system\n\nWhat specific help do you need?")
     }
 
+    // System suggestions and improvements
+    if (lowerMessage.includes('suggest') || lowerMessage.includes('improve') || lowerMessage.includes('recommendation') || lowerMessage.includes('optimize')) {
+        let response = `**System Analysis & Improvement Recommendations:**\n\n`
+        const suggestions = []
+        
+        if (systemData.risks.critical > 0) {
+            suggestions.push(`🔴 **Risk Management (High):** ${systemData.risks.critical} critical risk(s) detected. Implement immediate mitigation strategies.`)
+        }
+        if (systemData.incidents.open > 5) {
+            suggestions.push(`🟠 **Incident Management (High):** ${systemData.incidents.open} open incidents. Consider automated triage and increased response capacity.`)
+        }
+        if (systemData.compliance.score < 70) {
+            suggestions.push(`🔴 **Compliance (Critical):** Score at ${systemData.compliance.score}%. Conduct gap analysis and implement remediation plan immediately.`)
+        } else if (systemData.compliance.score < 85) {
+            suggestions.push(`🟡 **Compliance (Medium):** Score at ${systemData.compliance.score}%. Address ${systemData.compliance.nonCompliant} non-compliant area(s).`)
+        }
+        
+        const licenseUtil = Math.round((systemData.licenses.used / systemData.licenses.total) * 100)
+        if (licenseUtil > 90) {
+            suggestions.push(`🟠 **License Management (High):** Utilization at ${licenseUtil}%. Consider acquiring additional licenses.`)
+        }
+        
+        if (systemData.assets.inactive > systemData.assets.active * 0.3) {
+            suggestions.push(`🟡 **Asset Management (Medium):** ${systemData.assets.inactive} inactive assets. Conduct review and optimize lifecycle management.`)
+        }
+        
+        if (suggestions.length === 0) {
+            response += `✅ **Excellent!** System performing well with no critical issues.\n\n**Continuous Improvement:**\n• Maintain regular audits\n• Monitor KPIs consistently\n• Conduct quarterly reviews`
+        } else {
+            suggestions.forEach(s => response += `${s}\n\n`)
+        }
+        
+        return createTextResponse(response)
+    }
+
+    // System updates and tracking
+    if (lowerMessage.includes('update') || lowerMessage.includes('track') || lowerMessage.includes('change') || lowerMessage.includes('recent')) {
+        const response = `**System Updates & Activity Tracking:**\n\n`
+            + `📊 **Last 24 Hours:** ${systemData.recentActivity.last24Hours} activities\n\n`
+            + `🔄 **Module Status:**\n`
+            + `• Risks: ${systemData.risks.critical} critical, ${systemData.risks.total} total\n`
+            + `• Incidents: ${systemData.incidents.open} open, ${systemData.incidents.total} total\n`
+            + `• Compliance: ${systemData.compliance.score}% (${systemData.compliance.compliant}/${systemData.compliance.totalStandards})\n`
+            + `• Assets: ${systemData.assets.active} active, ${systemData.assets.total} total\n`
+            + `• Users: ${systemData.users.active} active\n\n`
+            + `📈 **System Health:**\n`
+            + `• Modules: ${systemData.modules.active} active\n`
+            + `• License: ${Math.round((systemData.licenses.used / systemData.licenses.total) * 100)}% utilized\n\n`
+            + `💡 I track changes across all modules in real-time.`
+
+        return createTextResponse(response)
+    }
+
+    // System health check
+    if (lowerMessage.includes('health') || lowerMessage.includes('status') || lowerMessage.includes('overview')) {
+        let healthScore = 100
+        const issues = []
+        
+        if (systemData.risks.critical > 0) { healthScore -= 15; issues.push('Critical risks detected') }
+        if (systemData.incidents.critical > 0) { healthScore -= 15; issues.push('Critical incidents active') }
+        if (systemData.compliance.score < 70) { healthScore -= 20; issues.push('Low compliance score') }
+        if (systemData.incidents.open > 10) { healthScore -= 10; issues.push('High open incidents') }
+        if ((systemData.licenses.used / systemData.licenses.total) > 0.9) { healthScore -= 5; issues.push('High license utilization') }
+        
+        const healthStatus = healthScore >= 90 ? 'Excellent' : healthScore >= 75 ? 'Good' : healthScore >= 60 ? 'Fair' : 'Needs Attention'
+        const healthColor = healthScore >= 90 ? '🟢' : healthScore >= 75 ? '🟡' : '🟠'
+        
+        let response = `**System Health Check:**\n\n${healthColor} **Overall Score:** ${healthScore}/100 (${healthStatus})\n\n`
+        
+        if (issues.length > 0) {
+            response += `⚠️ **Issues:**\n${issues.map(i => `• ${i}`).join('\n')}\n\n`
+        }
+        
+        response += `**Module Status:**\n`
+            + `✅ Risk: ${systemData.risks.total} tracked\n`
+            + `✅ Incident: ${systemData.incidents.total} logged\n`
+            + `✅ Asset: ${systemData.assets.total} managed\n`
+            + `✅ Compliance: ${systemData.compliance.score}%\n`
+            + `✅ Users: ${systemData.users.active} active\n\n`
+            + `*Checked: ${new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}*`
+        
+        return createTextResponse(response)
+    }
+
     // Greetings
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
         return createTextResponse("Hello! I'm Mazwi, your ProSuite AI assistant. I'm here to help you manage risks, assets, incidents, compliance, and more. What can I help you with today?")
     }
 
     // Default response
-    return createTextResponse("I understand you're asking about ProSuite. I can help you with information about risks, assets, incidents, compliance, modules, users, and system analytics. Could you please be more specific about what you'd like to know?")
+    return createTextResponse(
+        "I'm here to help with ProSuite! I can provide:\n\n" +
+        "• Risk, Asset, Incident, Compliance info\n" +
+        "• Governance, Audit, Performance tracking\n" +
+        "• System alerts and reminders\n" +
+        "• News, weather, market updates\n" +
+        "• System suggestions and improvements\n" +
+        "• Update tracking and health monitoring\n\n" +
+        "What would you like to know?"
+    )
 }
