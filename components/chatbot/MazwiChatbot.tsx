@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { MessageCircle, X, Send, Minimize2, Maximize2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -44,6 +44,30 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
 
+    const playNotificationSound = useCallback(() => {
+        try {
+            // Create a simple notification beep using Web Audio API
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+            const oscillator = audioContext.createOscillator()
+            const gainNode = audioContext.createGain()
+
+            oscillator.connect(gainNode)
+            gainNode.connect(audioContext.destination)
+
+            // Configure the sound
+            oscillator.frequency.value = 800 // Frequency in Hz
+            oscillator.type = 'sine'
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+
+            // Play the sound
+            oscillator.start(audioContext.currentTime)
+            oscillator.stop(audioContext.currentTime + 0.5)
+        } catch (error) {
+            console.log('Could not play notification sound:', error)
+        }
+    }, [])
+
     useEffect(() => {
         scrollToBottom()
     }, [messages])
@@ -54,64 +78,80 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
         }
     }, [isOpen, isMinimized])
 
+    // Periodic notification check function
+    const checkForNotifications = useCallback(async () => {
+        try {
+            // Randomly vary the query to check different aspects of the system
+            const queries = [
+                'check for new system alerts and critical issues',
+                'show me latest alerts, reminders and news',
+                'any critical risks, incidents or compliance issues?',
+                'check system status for risks, assets, incidents and licenses',
+                'what needs my attention across all modules?',
+                'show me system health and any warnings'
+            ]
+            
+            const randomQuery = queries[Math.floor(Math.random() * queries.length)]
+            
+            // Fetch comprehensive system alerts
+            const response = await fetch('/api/chatbot/mazwi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: randomQuery,
+                    history: []
+                })
+            })
+
+            const data = await response.json()
+
+            // Only send notification if there's actual content
+            if (data.response && data.response.trim().length > 0) {
+                // Create notification message with timestamp
+                let messageContent: string | MessageContent[]
+                
+                const notificationText = `🔔 **System Check** (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })})\n\n${data.response}`
+                
+                if (data.richContent && data.richContent.length > 0) {
+                    messageContent = [
+                        { type: 'text', data: notificationText },
+                        ...data.richContent
+                    ]
+                } else {
+                    messageContent = notificationText
+                }
+
+                const notificationMessage: Message = {
+                    id: `notification-${Date.now()}`,
+                    role: 'assistant',
+                    content: messageContent,
+                    timestamp: new Date()
+                }
+
+                setMessages(prev => [...prev, notificationMessage])
+                
+                // Play notification sound
+                playNotificationSound()
+                
+                // Show notification badge if chat is closed or minimized
+                if (!isOpen || isMinimized) {
+                    setHasNewNotification(true)
+                }
+                
+                // Auto-scroll to show new notification if chat is open
+                if (isOpen && !isMinimized) {
+                    setTimeout(() => scrollToBottom(), 100)
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error)
+        }
+    }, [isOpen, isMinimized, playNotificationSound])
+
     // Periodic notification system - checks for alerts and news every 2 minutes
     useEffect(() => {
-        const checkForNotifications = async () => {
-            try {
-                // Fetch both alerts and news
-                const response = await fetch('/api/chatbot/mazwi', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: 'check for new alerts and news',
-                        history: []
-                    })
-                })
-
-                const data = await response.json()
-
-                // Only send notification if there's actual content
-                if (data.response && data.response.trim().length > 0) {
-                    // Create notification message with timestamp
-                    let messageContent: string | MessageContent[]
-                    
-                    const notificationText = `🔔 **New Alert** (${new Date().toLocaleTimeString()})\n\n${data.response}`
-                    
-                    if (data.richContent && data.richContent.length > 0) {
-                        messageContent = [
-                            { type: 'text', data: notificationText },
-                            ...data.richContent
-                        ]
-                    } else {
-                        messageContent = notificationText
-                    }
-
-                    const notificationMessage: Message = {
-                        id: `notification-${Date.now()}`,
-                        role: 'assistant',
-                        content: messageContent,
-                        timestamp: new Date()
-                    }
-
-                    setMessages(prev => [...prev, notificationMessage])
-                    
-                    // Show notification badge if chat is closed or minimized
-                    if (!isOpen || isMinimized) {
-                        setHasNewNotification(true)
-                    }
-                    
-                    // Auto-scroll to show new notification if chat is open
-                    if (isOpen && !isMinimized) {
-                        setTimeout(() => scrollToBottom(), 100)
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching notifications:', error)
-            }
-        }
-
         // Start periodic checks (every 2 minutes = 120000ms)
         // First check after 10 seconds, then every 2 minutes
         const initialTimeout = setTimeout(checkForNotifications, 10000)
@@ -124,7 +164,7 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                 clearInterval(notificationIntervalRef.current)
             }
         }
-    }, [isOpen, isMinimized])
+    }, [checkForNotifications])
 
     // Clear notification badge when chat is opened
     useEffect(() => {
@@ -290,7 +330,7 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                     >
                                         <MessageRenderer content={message.content} />
                                         <p className="text-xs mt-1 opacity-70">
-                                            {message.timestamp.toLocaleTimeString([], {
+                                            {message.timestamp.toLocaleTimeString('en-GB', {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
                                             })}

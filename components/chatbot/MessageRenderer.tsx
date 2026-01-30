@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { ExternalLink } from 'lucide-react'
@@ -15,8 +15,6 @@ interface MessageRendererProps {
 }
 
 export default function MessageRenderer({ content }: MessageRendererProps) {
-    const router = useRouter()
-
     if (typeof content === 'string') {
         return <p className="text-sm whitespace-pre-wrap">{content}</p>
     }
@@ -100,10 +98,10 @@ export default function MessageRenderer({ content }: MessageRendererProps) {
 
                     case 'navigation':
                         return (
-                            <button
+                            <Link
                                 key={index}
-                                onClick={() => router.push(item.data.path)}
-                                className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                                href={item.data.path}
+                                className="block w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
                             >
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -114,7 +112,7 @@ export default function MessageRenderer({ content }: MessageRendererProps) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                 </div>
-                            </button>
+                            </Link>
                         )
 
                     default:

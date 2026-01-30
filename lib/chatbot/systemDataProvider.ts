@@ -87,12 +87,12 @@ export function getSystemData(): SystemData {
     const incidents = prosuiteData.incident?.incidents || []
 
     // Calculate risk statistics
-    const activeRisks = risks.filter((r: any) => r.status_id !== 4)
+    const activeRisks = risks.filter((r: any) => !r.is_archived)
     const risksBySeverity = {
-        critical: risks.filter((r: any) => r.severity_id === 4).length,
-        high: risks.filter((r: any) => r.severity_id === 3).length,
-        medium: risks.filter((r: any) => r.severity_id === 2).length,
-        low: risks.filter((r: any) => r.severity_id === 1).length,
+        critical: risks.filter((r: any) => r.impact_rating_id === 4).length,
+        high: risks.filter((r: any) => r.impact_rating_id === 3).length,
+        medium: risks.filter((r: any) => r.impact_rating_id === 2).length,
+        low: risks.filter((r: any) => r.impact_rating_id === 1).length,
     }
 
     // Calculate incident statistics
@@ -110,8 +110,8 @@ export function getSystemData(): SystemData {
             examples: risks.slice(0, 3).map((r: any) => ({
                 id: r.id,
                 title: r.title || r.name || 'Untitled Risk',
-                severity: getSeverityLabel(r.severity_id),
-                status: getStatusLabel(r.status_id)
+                severity: getSeverityLabel(r.impact_rating_id),
+                status: r.is_archived ? 'Archived' : 'Active'
             }))
         },
         assets: {
