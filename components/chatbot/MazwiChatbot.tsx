@@ -35,8 +35,10 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
     ])
     const [inputMessage, setInputMessage] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const [hasNewNotification, setHasNewNotification] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+    const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -49,6 +51,85 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
     useEffect(() => {
         if (isOpen && !isMinimized) {
             inputRef.current?.focus()
+        }
+    }, [isOpen, isMinimized])
+
+    // Periodic notification system - checks for alerts and news every 2 minutes
+    useEffect(() => {
+        const checkForNotifications = async () => {
+            try {
+                // Fetch both alerts and news
+                const response = await fetch('/api/chatbot/mazwi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'check for new alerts and news',
+                        history: []
+                    })
+                })
+
+                const data = await response.json()
+
+                // Only send notification if there's actual content
+                if (data.response && data.response.trim().length > 0) {
+                    // Create notification message with timestamp
+                    let messageContent: string | MessageContent[]
+                    
+                    const notificationText = `🔔 **New Alert** (${new Date().toLocaleTimeString()})\n\n${data.response}`
+                    
+                    if (data.richContent && data.richContent.length > 0) {
+                        messageContent = [
+                            { type: 'text', data: notificationText },
+                            ...data.richContent
+                        ]
+                    } else {
+                        messageContent = notificationText
+                    }
+
+                    const notificationMessage: Message = {
+                        id: `notification-${Date.now()}`,
+                        role: 'assistant',
+                        content: messageContent,
+                        timestamp: new Date()
+                    }
+
+                    setMessages(prev => [...prev, notificationMessage])
+                    
+                    // Show notification badge if chat is closed or minimized
+                    if (!isOpen || isMinimized) {
+                        setHasNewNotification(true)
+                    }
+                    
+                    // Auto-scroll to show new notification if chat is open
+                    if (isOpen && !isMinimized) {
+                        setTimeout(() => scrollToBottom(), 100)
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching notifications:', error)
+            }
+        }
+
+        // Start periodic checks (every 2 minutes = 120000ms)
+        // First check after 10 seconds, then every 2 minutes
+        const initialTimeout = setTimeout(checkForNotifications, 10000)
+        notificationIntervalRef.current = setInterval(checkForNotifications, 120000)
+
+        // Cleanup on unmount
+        return () => {
+            clearTimeout(initialTimeout)
+            if (notificationIntervalRef.current) {
+                clearInterval(notificationIntervalRef.current)
+            }
+        }
+    }, [isOpen, isMinimized])
+
+    // Clear notification badge when chat is opened
+    useEffect(() => {
+        if (isOpen && !isMinimized) {
+            setHasNewNotification(false)
         }
     }, [isOpen, isMinimized])
 
@@ -129,10 +210,16 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
             <div className={cn('fixed bottom-6 right-6 z-50', className)}>
                 <Button
                     onClick={() => setIsOpen(true)}
-                    className="h-14 w-14 rounded-full bg-gradient-to-r from-[#006EAD] to-[#008EE0] hover:from-[#005a8c] hover:to-[#0077c0] shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="h-14 w-14 rounded-full bg-gradient-to-r from-[#006EAD] to-[#008EE0] hover:from-[#005a8c] hover:to-[#0077c0] shadow-lg hover:shadow-xl transition-all duration-300 relative"
                     size="icon"
                 >
                     <MessageCircle className="h-6 w-6 text-white" />
+                    {hasNewNotification && (
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 border-2 border-white"></span>
+                        </span>
+                    )}
                 </Button>
             </div>
         )
