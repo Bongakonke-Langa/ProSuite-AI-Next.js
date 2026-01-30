@@ -37,9 +37,12 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [hasNewNotification, setHasNewNotification] = useState(false)
     const [userLocation, setUserLocation] = useState<{ city: string; country: string; lat: number; lon: number } | null>(null)
+    const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now())
+    const [queuedNotifications, setQueuedNotifications] = useState<Message[]>([])
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    const activityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -131,6 +134,10 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
     // Periodic notification check function
     const checkForNotifications = useCallback(async () => {
         try {
+            // Check if user is actively chatting (activity within last 30 seconds)
+            const timeSinceLastActivity = Date.now() - lastActivityTime
+            const isActivelyChatting = timeSinceLastActivity < 30000 // 30 seconds
+            
             // Randomly vary the query to check different aspects of the system
             const queries = [
                 'check for new system alerts and critical issues',
@@ -138,12 +145,11 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                 'any critical risks, incidents or compliance issues?',
                 'check system status for risks, assets, incidents and licenses',
                 'what needs my attention across all modules?',
-                'show me system health and any warnings'
+                'give me system health check and updates'
             ]
             
             const randomQuery = queries[Math.floor(Math.random() * queries.length)]
             
-            // Fetch comprehensive system alerts
             const response = await fetch('/api/chatbot/mazwi', {
                 method: 'POST',
                 headers: {
@@ -156,49 +162,36 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
             })
 
             const data = await response.json()
-
-            // Only send notification if there's actual content
-            if (data.response && data.response.trim().length > 0) {
-                // Create notification message with timestamp
-                let messageContent: string | MessageContent[]
-                
-                const notificationText = `🔔 **System Check** (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })})\n\n${data.response}`
-                
-                if (data.richContent && data.richContent.length > 0) {
-                    messageContent = [
-                        { type: 'text', data: notificationText },
-                        ...data.richContent
-                    ]
-                } else {
-                    messageContent = notificationText
-                }
-
+            
+            // Only show notification if there's meaningful content
+            if (data.response && data.response.length > 50) {
                 const notificationMessage: Message = {
                     id: `notification-${Date.now()}`,
                     role: 'assistant',
-                    content: messageContent,
+                    content: `🔔 **System Notification** (${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })})\n\n${data.response}`,
                     timestamp: new Date()
                 }
-
-                setMessages(prev => [...prev, notificationMessage])
                 
-                // Play notification sound
-                playNotificationSound()
-                
-                // Show notification badge if chat is closed or minimized
-                if (!isOpen || isMinimized) {
+                if (isActivelyChatting) {
+                    // Queue notification if user is actively chatting
+                    setQueuedNotifications(prev => [...prev, notificationMessage])
                     setHasNewNotification(true)
-                }
-                
-                // Auto-scroll to show new notification if chat is open
-                if (isOpen && !isMinimized) {
-                    setTimeout(() => scrollToBottom(), 100)
+                } else {
+                    // Show notification immediately if user is not chatting
+                    setMessages(prev => [...prev, notificationMessage])
+                    setHasNewNotification(true)
+                    playNotificationSound()
+                    
+                    // Auto-scroll to show new notification if chat is open
+                    if (isOpen && !isMinimized) {
+                        setTimeout(() => scrollToBottom(), 100)
+                    }
                 }
             }
         } catch (error) {
-            console.error('Error fetching notifications:', error)
+            console.error('Notification check failed:', error)
         }
-    }, [isOpen, isMinimized, playNotificationSound])
+    }, [playNotificationSound, lastActivityTime, isOpen, isMinimized])
 
     // Periodic notification system - checks for alerts and news every 2 minutes
     useEffect(() => {
@@ -223,8 +216,37 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
         }
     }, [isOpen, isMinimized])
 
+    // Check for queued notifications and display them after inactivity
+    useEffect(() => {
+        activityCheckIntervalRef.current = setInterval(() => {
+            const timeSinceLastActivity = Date.now() - lastActivityTime
+            const isInactive = timeSinceLastActivity >= 30000 // 30 seconds of inactivity
+            
+            if (isInactive && queuedNotifications.length > 0) {
+                // Display all queued notifications
+                setMessages(prev => [...prev, ...queuedNotifications])
+                setQueuedNotifications([])
+                playNotificationSound()
+                
+                // Auto-scroll if chat is open
+                if (isOpen && !isMinimized) {
+                    setTimeout(() => scrollToBottom(), 100)
+                }
+            }
+        }, 5000) // Check every 5 seconds
+
+        return () => {
+            if (activityCheckIntervalRef.current) {
+                clearInterval(activityCheckIntervalRef.current)
+            }
+        }
+    }, [lastActivityTime, queuedNotifications, isOpen, isMinimized, playNotificationSound])
+
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return
+
+        // Update activity time when user sends a message
+        setLastActivityTime(Date.now())
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -406,7 +428,10 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                     ref={inputRef}
                                     type="text"
                                     value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onChange={(e) => {
+                                        setInputValue(e.target.value)
+                                        setLastActivityTime(Date.now()) // Track typing activity
+                                    }}
                                     onKeyPress={handleKeyPress}
                                     placeholder="Ask Mazwi anything..."
                                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006EAD] text-sm text-gray-900 placeholder:text-gray-400"

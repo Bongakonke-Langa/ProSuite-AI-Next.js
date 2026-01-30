@@ -436,6 +436,43 @@ async function generateResponse(message: string, systemContext: string, systemDa
                 }]
             }
         }
+        if (lowerMessage.includes('distribution') || lowerMessage.includes('severity')) {
+            const risks = systemData.risks
+            let response = `**Risk Distribution by Severity:**\n\n`
+            response += `📊 **Breakdown:**\n`
+            response += `🔴 Critical: ${risks.critical} (${Math.round((risks.critical / risks.total) * 100)}%)\n`
+            response += `🟠 High: ${risks.high} (${Math.round((risks.high / risks.total) * 100)}%)\n`
+            response += `🟡 Medium: ${risks.medium} (${Math.round((risks.medium / risks.total) * 100)}%)\n`
+            response += `🟢 Low: ${risks.low} (${Math.round((risks.low / risks.total) * 100)}%)\n\n`
+            response += `**Total Risks:** ${risks.total}\n`
+            response += `**Active Risks:** ${risks.active}`
+            
+            const richContent = [
+                {
+                    type: 'chart',
+                    data: {
+                        chartType: 'pie',
+                        title: 'Risk Distribution by Severity',
+                        data: [
+                            { name: 'Critical', value: risks.critical, color: '#DC2626' },
+                            { name: 'High', value: risks.high, color: '#F59E0B' },
+                            { name: 'Medium', value: risks.medium, color: '#3B82F6' },
+                            { name: 'Low', value: risks.low, color: '#10B981' }
+                        ]
+                    }
+                },
+                {
+                    type: 'navigation',
+                    data: {
+                        title: 'View Risk Dashboard',
+                        description: 'See detailed risk analysis',
+                        path: '/risk-management/risks'
+                    }
+                }
+            ]
+            
+            return { text: response, richContent }
+        }
         if (lowerMessage.includes('high') || lowerMessage.includes('critical')) {
             const risks = systemData.risks
             let response = `**Critical & High Risks Overview:**\n`
@@ -641,9 +678,195 @@ async function generateResponse(message: string, systemContext: string, systemDa
         return createTextResponse(response)
     }
 
+    // Comprehensive system overview queries
+    if (lowerMessage.includes('complete system overview') || lowerMessage.includes('comprehensive') || 
+        (lowerMessage.includes('system') && lowerMessage.includes('overview')) ||
+        lowerMessage.includes('everything that needs attention') ||
+        lowerMessage.includes('status of all modules')) {
+        
+        const criticalIssues = []
+        if (systemData.risks.critical > 0) criticalIssues.push(`${systemData.risks.critical} critical risks`)
+        if (systemData.incidents.critical > 0) criticalIssues.push(`${systemData.incidents.critical} critical incidents`)
+        if (systemData.compliance.score < 70) criticalIssues.push(`Low compliance (${systemData.compliance.score}%)`)
+        
+        let response = `**📊 Complete System Overview**\n\n`
+        response += `**🎯 System Health:** ${criticalIssues.length === 0 ? '🟢 Excellent' : criticalIssues.length <= 2 ? '🟡 Good' : '🔴 Needs Attention'}\n\n`
+        
+        response += `**📋 Module Status:**\n`
+        response += `• **Risk Management:** ${systemData.risks.total} risks (${systemData.risks.critical} critical, ${systemData.risks.high} high)\n`
+        response += `• **Incident Management:** ${systemData.incidents.total} incidents (${systemData.incidents.open} open, ${systemData.incidents.critical} critical)\n`
+        response += `• **Asset Management:** ${systemData.assets.total} assets (${systemData.assets.active} active, ${systemData.assets.inactive} inactive)\n`
+        response += `• **Compliance:** ${systemData.compliance.score}% score (${systemData.compliance.compliant}/${systemData.compliance.totalStandards} standards)\n`
+        response += `• **Governance:** ${systemData.modules.active} active modules\n`
+        response += `• **Users:** ${systemData.users.active} active users\n`
+        response += `• **Licenses:** ${systemData.licenses.used}/${systemData.licenses.total} (${Math.round((systemData.licenses.used/systemData.licenses.total)*100)}%)\n\n`
+        
+        if (criticalIssues.length > 0) {
+            response += `**⚠️ Needs Attention:**\n${criticalIssues.map(i => `• ${i}`).join('\n')}\n\n`
+        }
+        
+        response += `**📈 Recent Activity:** ${systemData.recentActivity.last24Hours} actions in last 24 hours`
+        
+        return createTextResponse(response)
+    }
+
+    // Multi-module critical issues
+    if (lowerMessage.includes('critical issues') || lowerMessage.includes('top priorities') ||
+        (lowerMessage.includes('what') && lowerMessage.includes('attention'))) {
+        
+        const priorities = []
+        
+        if (systemData.risks.critical > 0) {
+            priorities.push({ level: 'Critical', item: `${systemData.risks.critical} critical risk(s) require immediate mitigation`, module: 'Risk Management' })
+        }
+        if (systemData.incidents.critical > 0) {
+            priorities.push({ level: 'Critical', item: `${systemData.incidents.critical} critical incident(s) need resolution`, module: 'Incident Management' })
+        }
+        if (systemData.compliance.score < 70) {
+            priorities.push({ level: 'Critical', item: `Compliance score at ${systemData.compliance.score}% - below threshold`, module: 'Compliance' })
+        }
+        if (systemData.incidents.open > 10) {
+            priorities.push({ level: 'High', item: `${systemData.incidents.open} open incidents - high volume`, module: 'Incident Management' })
+        }
+        if (systemData.risks.high > 5) {
+            priorities.push({ level: 'High', item: `${systemData.risks.high} high-severity risks need attention`, module: 'Risk Management' })
+        }
+        
+        let response = `**🎯 Top Priorities & Critical Issues:**\n\n`
+        
+        if (priorities.length === 0) {
+            response += `✅ **Excellent!** No critical issues detected.\n\n`
+            response += `**System Status:** All modules operating within normal parameters.\n`
+            response += `**Recommendation:** Continue regular monitoring and maintain current practices.`
+        } else {
+            priorities.forEach((p, i) => {
+                const emoji = p.level === 'Critical' ? '🔴' : '🟠'
+                response += `${i + 1}. ${emoji} **${p.module}** (${p.level})\n   ${p.item}\n\n`
+            })
+            response += `**Action Required:** Address critical items immediately, schedule high-priority items for this week.`
+        }
+        
+        return createTextResponse(response)
+    }
+
+    // Executive summary and dashboard
+    if (lowerMessage.includes('executive') || lowerMessage.includes('leadership') ||
+        lowerMessage.includes('dashboard summary') || lowerMessage.includes('critical metrics')) {
+        
+        const healthScore = 100 - 
+            (systemData.risks.critical * 15) - 
+            (systemData.incidents.critical * 15) - 
+            (systemData.compliance.score < 70 ? 20 : 0) -
+            (systemData.incidents.open > 10 ? 10 : 0)
+        
+        let response = `**📊 Executive Dashboard Summary**\n\n`
+        response += `**Overall Health Score:** ${healthScore}/100 ${healthScore >= 90 ? '🟢' : healthScore >= 75 ? '🟡' : '🔴'}\n\n`
+        
+        response += `**Key Metrics:**\n`
+        response += `• Risk Exposure: ${systemData.risks.critical + systemData.risks.high} high-priority risks\n`
+        response += `• Incident Response: ${systemData.incidents.open} open incidents\n`
+        response += `• Compliance Status: ${systemData.compliance.score}%\n`
+        response += `• Asset Utilization: ${Math.round((systemData.assets.active/systemData.assets.total)*100)}%\n`
+        response += `• License Efficiency: ${Math.round((systemData.licenses.used/systemData.licenses.total)*100)}%\n\n`
+        
+        response += `**Strategic Focus Areas:**\n`
+        if (systemData.risks.critical > 0) response += `• Immediate risk mitigation required\n`
+        if (systemData.compliance.score < 85) response += `• Compliance improvement initiatives\n`
+        if (systemData.incidents.open > 5) response += `• Incident response optimization\n`
+        if (!systemData.risks.critical && !systemData.incidents.critical && systemData.compliance.score >= 85) {
+            response += `• Maintain current operational excellence\n• Focus on continuous improvement\n`
+        }
+        
+        response += `\n**Prepared:** ${new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+        
+        return createTextResponse(response)
+    }
+
+    // Daily check-ins and morning briefings
+    if (lowerMessage.includes('good morning') || lowerMessage.includes('daily') || 
+        lowerMessage.includes('what needs my attention today') || lowerMessage.includes('updates from')) {
+        
+        let response = `**☀️ Good Morning! Daily Briefing**\n\n`
+        response += `**📅 ${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}**\n`
+        response += `**🕐 ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}\n\n`
+        
+        const urgent = []
+        if (systemData.risks.critical > 0) urgent.push(`🔴 ${systemData.risks.critical} critical risk(s)`)
+        if (systemData.incidents.critical > 0) urgent.push(`🔴 ${systemData.incidents.critical} critical incident(s)`)
+        if (systemData.incidents.open > 0) urgent.push(`🟠 ${systemData.incidents.open} open incident(s)`)
+        
+        if (urgent.length > 0) {
+            response += `**⚠️ Requires Immediate Attention:**\n${urgent.map(u => `• ${u}`).join('\n')}\n\n`
+        } else {
+            response += `**✅ No Urgent Issues**\n\n`
+        }
+        
+        response += `**📊 Today's Snapshot:**\n`
+        response += `• Total Risks: ${systemData.risks.total} (${systemData.risks.active} active)\n`
+        response += `• Open Incidents: ${systemData.incidents.open}\n`
+        response += `• Compliance: ${systemData.compliance.score}%\n`
+        response += `• Active Users: ${systemData.users.active}\n`
+        response += `• Last 24h Activity: ${systemData.recentActivity.last24Hours} actions\n\n`
+        
+        response += `**💡 Today's Focus:**\n`
+        if (systemData.risks.critical > 0 || systemData.incidents.critical > 0) {
+            response += `• Address critical items first\n• Review incident response times\n• Update stakeholders on progress`
+        } else {
+            response += `• Review pending tasks\n• Monitor system health\n• Plan strategic initiatives`
+        }
+        
+        return createTextResponse(response)
+    }
+
+    // Navigation and quick actions
+    if (lowerMessage.includes('take me to') || lowerMessage.includes('navigate to') || 
+        lowerMessage.includes('go to') || lowerMessage.includes('open') || 
+        (lowerMessage.includes('show') && lowerMessage.includes('dashboard')) ||
+        (lowerMessage.includes('how do i') && lowerMessage.includes('navigate'))) {
+        
+        const navigationMap: Record<string, { path: string; title: string; description: string }> = {
+            'risk': { path: '/risk-management/risks', title: 'Risk Management', description: 'View and manage all risks' },
+            'incident': { path: '/incident-management/incidents', title: 'Incident Management', description: 'Track and resolve incidents' },
+            'asset': { path: '/asset-management/assets', title: 'Asset Management', description: 'Manage organizational assets' },
+            'compliance': { path: '/compliance/dashboard', title: 'Compliance Management', description: 'Monitor compliance status' },
+            'governance': { path: '/governance/dashboard', title: 'Governance Management', description: 'Track governance objectives' },
+            'audit': { path: '/audit/dashboard', title: 'Audit Management', description: 'View audit activities' },
+            'performance': { path: '/performance/dashboard', title: 'Performance Management', description: 'Monitor KPIs and performance' }
+        }
+        
+        for (const [key, nav] of Object.entries(navigationMap)) {
+            if (lowerMessage.includes(key)) {
+                return {
+                    text: `📍 **${nav.title}**\n\n${nav.description}. Click the link below to navigate.`,
+                    richContent: [{
+                        type: 'navigation',
+                        data: {
+                            title: nav.title,
+                            description: nav.description,
+                            path: nav.path
+                        }
+                    }]
+                }
+            }
+        }
+        
+        // If no specific module found, show all navigation options
+        return {
+            text: `**📍 Navigation Menu**\n\nSelect a module to navigate to:`,
+            richContent: Object.values(navigationMap).map(nav => ({
+                type: 'navigation',
+                data: {
+                    title: nav.title,
+                    description: nav.description,
+                    path: nav.path
+                }
+            }))
+        }
+    }
+
     // Help and navigation
-    if (lowerMessage.includes('help') || lowerMessage.includes('how to') || lowerMessage.includes('navigate')) {
-        return createTextResponse("I'm here to help! I can assist you with:\n• Checking status of risks, assets, and incidents\n• Viewing compliance scores and audit logs\n• Understanding module data and analytics\n• Navigating the ProSuite system\n\nWhat specific help do you need?")
+    if (lowerMessage.includes('help') || lowerMessage.includes('how to') || lowerMessage.includes('what can you')) {
+        return createTextResponse("I'm here to help! I can assist you with:\n• Checking status of risks, assets, and incidents\n• Viewing compliance scores and audit logs\n• Understanding module data and analytics\n• Navigating the ProSuite system\n• Executive summaries and reports\n• Daily briefings and updates\n• System health monitoring\n\nWhat specific help do you need?")
     }
 
     // System suggestions and improvements
