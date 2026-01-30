@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import MainSidebar from '@/components/MainSidebar';
 import { SecondarySidebar } from '@/components/SecondarySidebar';
 import Header from '@/components/Header';
+import MazwiChatbot from '@/components/chatbot/MazwiChatbot';
 import { menuItems } from '@/lib/menu-items';
 import type { MenuItem } from '@/types/menu';
 import { useAppStore } from '@/store/appStore';
@@ -51,6 +52,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+      
+      {/* Mazwi AI Chatbot */}
+      <MazwiChatbot />
     </div>
   );
 }
