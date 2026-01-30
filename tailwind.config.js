@@ -7,6 +7,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xxxs': '375px',
+      },
       colors: {
         prosuite: {
           50: '#e6f4ff',
