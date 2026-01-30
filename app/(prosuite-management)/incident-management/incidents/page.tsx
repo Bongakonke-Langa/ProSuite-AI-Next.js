@@ -3,12 +3,23 @@
 import { useState } from 'react'
 import AppLayout from '@/components/AppLayout'
 import PageSectionHeader from '@/components/prosuite-management/layout/PageSectionHeader'
-import { Card } from '@/components/ui/card'
+import { StatsGrid } from '@/components/prosuite-management/cards/StatsCard'
 import { prosuiteData } from '@/lib/prosuite-data'
+import { AlertCircle, Activity, CheckCircle, ListTodo } from 'lucide-react'
 
 export default function IncidentsPage() {
     const incidents = prosuiteData.incident?.incidents || []
-    const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all')
+    const [searchQuery, setSearchQuery] = useState('')
+
+    const getSeverityLabel = (severityId: number): string => {
+        const severityMap: { [key: number]: string } = {
+            1: 'Low',
+            2: 'Medium',
+            3: 'High',
+            4: 'Critical'
+        }
+        return severityMap[severityId] || 'Unknown'
+    }
 
     const getStatusLabel = (statusId: number): string => {
         const statusMap: { [key: number]: string } = {
@@ -20,95 +31,150 @@ export default function IncidentsPage() {
         return statusMap[statusId] || 'Unknown'
     }
 
-    const getStatusColor = (statusId: number): string => {
-        const colorMap: { [key: number]: string } = {
-            1: 'bg-red-100 text-red-800',
-            2: 'bg-yellow-100 text-yellow-800',
-            3: 'bg-blue-100 text-blue-800',
-            4: 'bg-gray-100 text-gray-800'
+    const getIncidentCounts = () => {
+        const counts = {
+            total: incidents.length,
+            open: incidents.filter(i => i.status_id === 1 || i.status_id === 2).length,
+            critical: incidents.filter(i => i.severity_level_id === 4).length,
+            resolved: incidents.filter(i => i.status_id === 3).length,
         }
-        return colorMap[statusId] || 'bg-gray-100 text-gray-800'
+        return counts
     }
 
+    const incidentCounts = getIncidentCounts()
+
+    const statsItems = [
+        {
+            title: 'Total Incidents',
+            number: incidentCounts.total,
+            statColor: 'text-gray-600',
+            icon: <ListTodo size={20} />,
+        },
+        {
+            title: 'Open Incidents',
+            number: incidentCounts.open,
+            statColor: 'text-orange-600',
+            icon: <Activity size={20} />,
+        },
+        {
+            title: 'Critical Incidents',
+            number: incidentCounts.critical,
+            statColor: 'text-red-600',
+            icon: <AlertCircle size={20} />,
+        },
+        {
+            title: 'Resolved',
+            number: incidentCounts.resolved,
+            statColor: 'text-green-600',
+            icon: <CheckCircle size={20} />,
+        },
+    ]
+
     const filteredIncidents = incidents.filter(incident => {
-        if (filter === 'all') return true
-        if (filter === 'open') return incident.status_id === 1 || incident.status_id === 2
-        if (filter === 'closed') return incident.status_id === 4
-        return true
+        if (!searchQuery) return true
+        const query = searchQuery.toLowerCase()
+        return (
+            incident.title?.toLowerCase().includes(query) ||
+            incident.description?.toLowerCase().includes(query) ||
+            incident.id.toString().includes(query)
+        )
     })
 
     return (
         <AppLayout>
-            <div className="p-4 md:p-6 lg:p-8">
+            <div className="p-4 md:p-6 lg:p-8 space-y-6">
                 <PageSectionHeader
                     title="Incident Management"
                     subTitle="Monitor and respond to security incidents"
                     showImportExport={false}
-                    showAddButton={true}
-                    onAddClick={() => console.log('Add new incident')}
                     removePadding={false}
                 />
 
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-2 mb-6 bg-gray-50 rounded-lg p-1 w-fit">
-                    <button
-                        onClick={() => setFilter('all')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        All Incidents ({incidents.length})
-                    </button>
-                    <button
-                        onClick={() => setFilter('open')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'open' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Open
-                    </button>
-                    <button
-                        onClick={() => setFilter('closed')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                            filter === 'closed' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Closed
-                    </button>
-                </div>
+                <StatsGrid stats={statsItems} />
 
-                {/* Incidents Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredIncidents.map((incident) => (
-                        <Card key={incident.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer">
-                            <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-semibold text-gray-900 flex-1">
-                                    {incident.title || `Incident #${incident.id}`}
-                                </h3>
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(incident.status_id)}`}>
-                                    {getStatusLabel(incident.status_id)}
-                                </span>
-                            </div>
-                            
-                            {incident.description && (
-                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                    {incident.description}
-                                </p>
-                            )}
-
-                            <div className="flex items-center justify-between text-xs text-gray-500">
-                                <span>Occurred: {new Date(incident.date_occurred).toLocaleDateString()}</span>
-                                <span>ID: {incident.id}</span>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-
-                {filteredIncidents.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">No incidents found for the selected filter.</p>
+                {/* Incidents Table */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Incident ID
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Description
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Severity
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date Occurred
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredIncidents.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                                            No incidents found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredIncidents.map((incident) => {
+                                        const severityLabel = getSeverityLabel(incident.severity_level_id)
+                                        const statusLabel = getStatusLabel(incident.status_id)
+                                        const severityColorClass = incident.severity_level_id === 4 ? 'bg-red-100 text-red-800' :
+                                                          incident.severity_level_id === 3 ? 'bg-orange-100 text-orange-800' :
+                                                          incident.severity_level_id === 2 ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                        const statusColorClass = incident.status_id === 1 ? 'bg-red-100 text-red-800' :
+                                                                incident.status_id === 2 ? 'bg-yellow-100 text-yellow-800' :
+                                                                incident.status_id === 3 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                        
+                                        return (
+                                            <tr key={incident.id} className="hover:bg-gray-50 cursor-pointer">
+                                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    INC-{String(incident.id).padStart(3, '0')}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">
+                                                    {incident.title || `Incident #${incident.id}`}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600 max-w-md truncate">
+                                                    {incident.description || '-'}
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${severityColorClass}`}>
+                                                        {severityLabel}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusColorClass}`}>
+                                                        {statusLabel}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(incident.date_occurred).toLocaleDateString('en-GB')}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+
+                    {/* Table Footer */}
+                    <div className="bg-white px-4 py-3 border-t border-gray-200">
+                        <div className="text-sm text-gray-700">
+                            Showing {filteredIncidents.length} of {incidents.length} incidents
+                        </div>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     )

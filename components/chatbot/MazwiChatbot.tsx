@@ -33,9 +33,10 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
             timestamp: new Date()
         }
     ])
-    const [inputMessage, setInputMessage] = useState('')
+    const [inputValue, setInputValue] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [hasNewNotification, setHasNewNotification] = useState(false)
+    const [userLocation, setUserLocation] = useState<{ city: string; country: string; lat: number; lon: number } | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -77,6 +78,55 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
             inputRef.current?.focus()
         }
     }, [isOpen, isMinimized])
+
+    // Detect user location on mount
+    useEffect(() => {
+        const detectLocation = async () => {
+            if ('geolocation' in navigator) {
+                try {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const { latitude, longitude } = position.coords
+                            
+                            // Use reverse geocoding to get city and country
+                            // In production, use a real geocoding API
+                            // For now, default to Johannesburg if in South Africa region
+                            const location = {
+                                city: 'Johannesburg',
+                                country: 'South Africa',
+                                lat: latitude,
+                                lon: longitude
+                            }
+                            
+                            setUserLocation(location)
+                        },
+                        (error) => {
+                            console.log('Location access denied, using default location')
+                            // Default to Johannesburg, South Africa
+                            setUserLocation({
+                                city: 'Johannesburg',
+                                country: 'South Africa',
+                                lat: -26.2041,
+                                lon: 28.0473
+                            })
+                        }
+                    )
+                } catch (error) {
+                    console.log('Geolocation error:', error)
+                }
+            } else {
+                // Default location if geolocation not supported
+                setUserLocation({
+                    city: 'Johannesburg',
+                    country: 'South Africa',
+                    lat: -26.2041,
+                    lon: 28.0473
+                })
+            }
+        }
+
+        detectLocation()
+    }, [])
 
     // Periodic notification check function
     const checkForNotifications = useCallback(async () => {
@@ -174,29 +224,30 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
     }, [isOpen, isMinimized])
 
     const handleSendMessage = async () => {
-        if (!inputMessage.trim() || isLoading) return
+        if (!inputValue.trim() || isLoading) return
 
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: inputMessage,
+            content: inputValue,
             timestamp: new Date()
         }
 
         setMessages(prev => [...prev, userMessage])
-        setInputMessage('')
+        setInputValue('')
         setIsLoading(true)
 
         try {
-            // Call the AI API endpoint
+            // Send location data with the message if available
             const response = await fetch('/api/chatbot/mazwi', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: inputMessage,
-                    history: messages
+                    message: inputValue,
+                    history: messages,
+                    location: userLocation
                 })
             })
 
@@ -354,8 +405,8 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                 <input
                                     ref={inputRef}
                                     type="text"
-                                    value={inputMessage}
-                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     placeholder="Ask Mazwi anything..."
                                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006EAD] text-sm text-gray-900 placeholder:text-gray-400"
@@ -363,7 +414,7 @@ export default function MazwiChatbot({ className }: MazwiChatbotProps) {
                                 />
                                 <Button
                                     onClick={handleSendMessage}
-                                    disabled={!inputMessage.trim() || isLoading}
+                                    disabled={!inputValue.trim() || isLoading}
                                     className="bg-[#006EAD] hover:bg-[#005a8c] text-white"
                                     size="icon"
                                 >
