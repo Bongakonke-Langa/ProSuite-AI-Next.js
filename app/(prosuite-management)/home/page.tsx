@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { Card } from '@/components/ui/card'
 import React, { useEffect, useState, Suspense } from 'react'
 import { useAuth } from '@/hooks/prosuite-management/auth'
-import proSuiteIcon from '@/assets/images/prosuite-icon.png'
 import useTasks from '@/hooks/prosuite-management/useTasks'
 import { List, Loader, CheckCircle } from 'lucide-react'
 import { Task, CreateTaskData, UpdateTaskData } from '@/types/task'
@@ -113,7 +112,7 @@ const HomeContent: React.FC = () => {
     return (
         <div className="w-full flex">
             <div className="flex-grow">
-                <div className="w-full relative bg-gradient-to-r from-[#017DC5] to-[#008EE0] rounded-lg mb-6 sm:mb-8 lg:mb-10 px-4 sm:px-6 lg:px-10 py-6 sm:py-12 lg:py-20 overflow-hidden">
+                <div className="w-full relative bg-prosuite-500 from-[#017DC5] to-[#008EE0] rounded-lg mb-6 sm:mb-8 lg:mb-10 px-4 sm:px-6 lg:px-10 py-6 sm:py-12 lg:py-20 overflow-hidden">
                     <h2 className="text-white text-lg sm:text-2xl lg:text-4xl font-bold leading-tight">
                         {user?.name ? (
                             <>{greeting} {user.name}</>
@@ -129,8 +128,10 @@ const HomeContent: React.FC = () => {
                     </p>
                     <div className="absolute -right-1 sm:-right-2 top-2 sm:top-4">
                         <Image
-                            src={proSuiteIcon}
+                            src="/prosuite-logo.svg"
                             alt="ProSuite"
+                            width={233}
+                            height={233}
                             className="w-[60px] sm:w-[120px] lg:w-[233px] opacity-30 sm:opacity-50"
                         />
                     </div>
