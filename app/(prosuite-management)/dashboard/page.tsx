@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Grid, Users, Shield, Activity, ArrowLeftRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import AppLayout from '@/components/AppLayout'
 import PageSectionHeader from '@/components/prosuite-management/layout/PageSectionHeader'
 import { StatsGrid } from '@/components/prosuite-management/cards/StatsCard'
 import useModules from '@/hooks/prosuite-management/useModules'
@@ -702,4 +703,14 @@ const DashboardContent = () => {
     )
 }
 
-export default DashboardContent
+const Dashboard = () => {
+    return (
+        <AppLayout>
+            <div className="p-4 md:p-6 lg:p-8">
+                <DashboardContent />
+            </div>
+        </AppLayout>
+    )
+}
+
+export default Dashboard

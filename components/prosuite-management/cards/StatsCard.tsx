@@ -129,7 +129,7 @@ export const StatsCard: FC<StatsCardProps> = ({
                             <a
                                 href={href}
                                 className={cn(
-                                    'font-medium tracking-widest text-[10px] xxxs:text-xs uppercase before:absolute before:inset-0',
+                                    'font-medium tracking-widest text-xs xxxs:text-sm uppercase before:absolute before:inset-0',
                                     titleColor || 'text-gray-500/60'
                                 )}
                             >
@@ -138,7 +138,7 @@ export const StatsCard: FC<StatsCardProps> = ({
                         ) : (
                             <div
                                 className={cn(
-                                    'font-medium tracking-widest text-[10px] xxxs:text-xs uppercase',
+                                    'font-medium tracking-widest text-xs xxxs:text-sm uppercase',
                                     titleColor || 'text-gray-500/60'
                                 )}
                             >
@@ -151,12 +151,12 @@ export const StatsCard: FC<StatsCardProps> = ({
                             </div>
                         ) : (
                             <>
-                                <div className="text-lg xxxs:text-xl md:text-2xl font-semibold text-gray-900">
+                                <div className="text-2xl xxxs:text-3xl md:text-4xl font-bold text-gray-900">
                                     {isHealthScore ? `${number}%` : number}
                                 </div>
                                 <div
                                     className={cn(
-                                        'text-[10px] xxxs:text-xs',
+                                        'text-xs xxxs:text-sm',
                                         trendTextColor || 'text-muted-foreground/60'
                                     )}
                                 >
