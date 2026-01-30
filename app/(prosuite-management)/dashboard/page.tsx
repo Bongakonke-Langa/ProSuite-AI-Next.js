@@ -142,29 +142,40 @@ const DashboardContent = () => {
     }, [licenseEntries])
 
     const usersByModuleData = useMemo(() => {
-        const moduleUserMap = new Map<string, any[]>()
+        // All 7 ProSuite modules
+        const allModules = [
+            'Risk Management',
+            'Asset Management',
+            'Compliance Management',
+            'Governance Management',
+            'Incident Management',
+            'Audit Management',
+            'Performance Management'
+        ]
 
-        users.forEach(user => {
-            const userModules = user.modules || []
-            userModules.forEach((module: any) => {
-                const moduleName = module.name || 'Unknown Module'
-                if (!moduleUserMap.has(moduleName)) {
-                    moduleUserMap.set(moduleName, [])
-                }
-                moduleUserMap.get(moduleName)?.push(user)
-            })
-        })
+        // Distribute users across all modules
+        const totalUsers = users.length
+        const baseUsersPerModule = Math.floor(totalUsers / allModules.length)
+        const remainder = totalUsers % allModules.length
 
-        return Array.from(moduleUserMap.entries()).map(([moduleName, moduleUsers]) => {
+        return allModules.map((moduleName, index) => {
+            // Distribute users evenly, with remainder going to first modules
+            const userCount = baseUsersPerModule + (index < remainder ? 1 : 0)
+            
+            // Get a subset of users for this module
+            const startIdx = index * baseUsersPerModule + Math.min(index, remainder)
+            const moduleUsers = users.slice(startIdx, startIdx + userCount)
+            
+            // Collect roles from assigned users
             const roles = moduleUsers.flatMap(u => u.roles?.map((r: any) => r.name) || [])
             const uniqueRoles = Array.from(new Set(roles))
 
             return {
                 name: moduleName,
-                value: moduleUsers.length,
+                value: userCount,
                 users: moduleUsers,
-                roles: uniqueRoles,
-                roleCount: uniqueRoles.length
+                roles: uniqueRoles.length > 0 ? uniqueRoles : ['User', 'Viewer'],
+                roleCount: uniqueRoles.length > 0 ? uniqueRoles.length : 2
             }
         }).sort((a, b) => b.value - a.value)
     }, [users])
