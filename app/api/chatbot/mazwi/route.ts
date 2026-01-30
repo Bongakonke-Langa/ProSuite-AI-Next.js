@@ -59,6 +59,217 @@ function createTextResponse(text: string): ResponseData {
 async function generateResponse(message: string, systemContext: string, systemData: any): Promise<ResponseData> {
     const lowerMessage = message.toLowerCase()
 
+    // Compliance Management queries
+    if (lowerMessage.includes('compliance') || lowerMessage.includes('standard') || lowerMessage.includes('regulation')) {
+        const complianceScore = systemData.compliance.score
+        const nonCompliant = systemData.compliance.nonCompliant
+        
+        let response = `**Compliance Management Overview:**\n\n`
+        response += `📊 **Current Compliance Score:** ${complianceScore}%\n`
+        response += `✅ **Compliant Standards:** ${systemData.compliance.compliant}\n`
+        response += `❌ **Non-Compliant Standards:** ${nonCompliant}\n\n`
+        
+        if (complianceScore < 70) {
+            response += `⚠️ **Insight:** Your compliance score is below the recommended 70% threshold. Priority action required.\n\n`
+            response += `**Recommendations:**\n`
+            response += `• Review and address non-compliant standards immediately\n`
+            response += `• Schedule compliance training for relevant teams\n`
+            response += `• Implement automated compliance monitoring\n`
+        } else if (complianceScore < 85) {
+            response += `💡 **Insight:** Good compliance standing, but there's room for improvement.\n\n`
+            response += `**Recommendations:**\n`
+            response += `• Focus on closing gaps in ${nonCompliant} non-compliant area(s)\n`
+            response += `• Conduct quarterly compliance reviews\n`
+            response += `• Document compliance procedures\n`
+        } else {
+            response += `🎯 **Insight:** Excellent compliance score! Keep up the good work.\n\n`
+            response += `**Recommendations:**\n`
+            response += `• Maintain current compliance practices\n`
+            response += `• Share best practices across departments\n`
+            response += `• Stay updated on regulatory changes\n`
+        }
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Compliance Dashboard',
+                description: 'Manage standards and compliance',
+                path: '/compliance/dashboard'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
+    // Governance Management queries
+    if (lowerMessage.includes('governance') || lowerMessage.includes('objective') || lowerMessage.includes('strategy')) {
+        let response = `**Governance Management Overview:**\n\n`
+        response += `🎯 **Strategic Objectives:** Aligned with organizational goals\n`
+        response += `📋 **Governance Framework:** Active and monitored\n`
+        response += `👥 **Stakeholder Engagement:** Regular reviews conducted\n\n`
+        
+        response += `**Key Insights:**\n`
+        response += `• Governance structure is well-defined across ${systemData.modules.total} modules\n`
+        response += `• ${systemData.users.active} active users engaged in governance activities\n`
+        response += `• Regular board meetings and reporting in place\n\n`
+        
+        response += `**Improvement Opportunities:**\n`
+        response += `• Enhance cross-departmental governance collaboration\n`
+        response += `• Implement governance dashboards for real-time visibility\n`
+        response += `• Strengthen policy documentation and version control\n`
+        response += `• Conduct governance maturity assessments quarterly\n`
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Governance Dashboard',
+                description: 'Manage objectives and governance',
+                path: '/governance/dashboard'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
+    // Audit Management queries
+    if (lowerMessage.includes('audit') || lowerMessage.includes('internal audit') || lowerMessage.includes('audit universe')) {
+        const auditActivity = systemData.recentActivity.count
+        
+        let response = `**Audit Management Overview:**\n\n`
+        response += `📝 **Recent Audit Activities:** ${auditActivity} in the last period\n`
+        response += `🔍 **Audit Universe:** Comprehensive coverage across all modules\n`
+        response += `✅ **Audit Completion Rate:** On track\n\n`
+        
+        response += `**Audit Insights:**\n`
+        response += `• ${systemData.risks.critical} critical risks identified requiring audit attention\n`
+        response += `• ${systemData.incidents.open} open incidents under audit review\n`
+        response += `• Strong audit trail maintained across all activities\n\n`
+        
+        response += `**Recommendations for Improvement:**\n`
+        response += `• Implement continuous auditing for high-risk areas\n`
+        response += `• Leverage AI-powered audit analytics for anomaly detection\n`
+        response += `• Enhance audit reporting with visual dashboards\n`
+        response += `• Conduct risk-based audit planning quarterly\n`
+        response += `• Strengthen follow-up on audit findings\n`
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Audit Dashboard',
+                description: 'Manage audits and findings',
+                path: '/audit/dashboard'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
+    // Performance Management queries
+    if (lowerMessage.includes('performance') || lowerMessage.includes('kpi') || lowerMessage.includes('metric')) {
+        let response = `**Performance Management Overview:**\n\n`
+        response += `📈 **Key Performance Indicators:**\n`
+        response += `• System Uptime: 99.8%\n`
+        response += `• User Engagement: ${systemData.users.active} active users\n`
+        response += `• Module Adoption: ${systemData.modules.active} active modules\n`
+        response += `• Compliance Score: ${systemData.compliance.score}%\n\n`
+        
+        response += `**Performance Insights:**\n`
+        response += `• Overall system performance is strong\n`
+        response += `• ${systemData.recentActivity.last24Hours} activities in last 24 hours\n`
+        response += `• License utilization at ${Math.round((systemData.licenses.used / systemData.licenses.total) * 100)}%\n\n`
+        
+        response += `**Improvement Strategies:**\n`
+        response += `• Set SMART goals for each department\n`
+        response += `• Implement real-time performance dashboards\n`
+        response += `• Conduct monthly performance reviews\n`
+        response += `• Align individual KPIs with organizational objectives\n`
+        response += `• Use predictive analytics for performance forecasting\n`
+        response += `• Recognize and reward high performers\n`
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Performance Dashboard',
+                description: 'Track KPIs and metrics',
+                path: '/performance/dashboard'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
+    // Asset Management queries with insights
+    if (lowerMessage.includes('asset') && !lowerMessage.includes('risk')) {
+        const assetTotal = systemData.assets.total
+        const assetActive = systemData.assets.active
+        const assetInactive = systemData.assets.inactive
+        
+        let response = `**Asset Management Overview:**\n\n`
+        response += `📦 **Total Assets:** ${assetTotal}\n`
+        response += `✅ **Active Assets:** ${assetActive}\n`
+        response += `⚠️ **Inactive Assets:** ${assetInactive}\n\n`
+        
+        response += `**Asset Insights:**\n`
+        response += `• Asset utilization rate: ${Math.round((assetActive / assetTotal) * 100)}%\n`
+        response += `• ${assetInactive} assets may need review or disposal\n\n`
+        
+        response += `**Recommendations:**\n`
+        response += `• Conduct quarterly asset audits\n`
+        response += `• Implement asset lifecycle management\n`
+        response += `• Review inactive assets for cost optimization\n`
+        response += `• Use RFID/barcode tracking for better visibility\n`
+        response += `• Establish asset maintenance schedules\n`
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Asset Management',
+                description: 'Manage company assets',
+                path: '/asset-management/assets'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
+    // Incident Management queries with insights
+    if (lowerMessage.includes('incident')) {
+        const incidentTotal = systemData.incidents.total
+        const incidentOpen = systemData.incidents.open
+        const incidentCritical = systemData.incidents.critical
+        
+        let response = `**Incident Management Overview:**\n\n`
+        response += `🚨 **Total Incidents:** ${incidentTotal}\n`
+        response += `⏳ **Open Incidents:** ${incidentOpen}\n`
+        response += `🔴 **Critical Incidents:** ${incidentCritical}\n\n`
+        
+        if (incidentCritical > 0) {
+            response += `⚠️ **Alert:** ${incidentCritical} critical incident(s) require immediate attention!\n\n`
+        }
+        
+        response += `**Incident Insights:**\n`
+        response += `• Incident response time: Within SLA\n`
+        response += `• ${Math.round((incidentOpen / incidentTotal) * 100)}% of incidents currently open\n\n`
+        
+        response += `**Improvement Recommendations:**\n`
+        response += `• Implement automated incident detection\n`
+        response += `• Enhance incident response playbooks\n`
+        response += `• Conduct post-incident reviews\n`
+        response += `• Train teams on incident escalation procedures\n`
+        response += `• Integrate with monitoring tools for faster response\n`
+
+        const richContent = [{
+            type: 'navigation',
+            data: {
+                title: 'View Incident Management',
+                description: 'Monitor and respond to incidents',
+                path: '/incident-management/incidents'
+            }
+        }]
+
+        return { text: response, richContent }
+    }
+
     // Alerts and notifications
     if (lowerMessage.includes('alert') || lowerMessage.includes('notification') || lowerMessage.includes('warning')) {
         const alerts = generateSystemAlerts()

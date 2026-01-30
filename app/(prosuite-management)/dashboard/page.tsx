@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { Grid, Users, Shield, Activity, ArrowLeftRight } from 'lucide-react'
+import { Grid, Users, Shield, Activity, ArrowLeftRight, AlertTriangle, AlertCircle, Package, FileCheck } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import AppLayout from '@/components/AppLayout'
 import PageSectionHeader from '@/components/prosuite-management/layout/PageSectionHeader'
@@ -19,6 +19,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { prosuiteData } from '@/lib/prosuite-data'
 
 const MAX_CHART_LABEL_LENGTH = 15
 
@@ -47,6 +48,30 @@ const DashboardContent = () => {
         adminAuditLogs,
         adminAuditLogsLoading
     } = useAuditLogs()
+
+    // Get GRC module data
+    const risks = prosuiteData.risk?.risks || []
+    const incidents = prosuiteData.incident?.incidents || []
+    const assets = prosuiteData.asset?.assets || []
+
+    // Calculate GRC stats
+    const riskStats = useMemo(() => ({
+        total: risks.length,
+        critical: risks.filter(r => r.impact_rating_id === 4).length,
+        high: risks.filter(r => r.impact_rating_id === 3).length,
+        active: risks.filter(r => !r.is_archived).length,
+    }), [risks])
+
+    const incidentStats = useMemo(() => ({
+        total: incidents.length,
+        open: incidents.filter(i => i.status_id !== 4).length,
+        critical: incidents.filter(i => i.severity_level_id === 4).length,
+    }), [incidents])
+
+    const assetStats = useMemo(() => ({
+        total: assets.length,
+        active: assets.filter(a => a.assetStatus_name?.toLowerCase().includes('active')).length,
+    }), [assets])
 
     const moduleStats = useMemo(() => {
         return modules.reduce((acc, module) => {
@@ -151,6 +176,38 @@ const DashboardContent = () => {
             .slice(0, 8)
     }, [auditLogStats])
 
+    // GRC Module Chart Data
+    const riskDistributionData = useMemo(() => {
+        return [
+            { name: 'Critical', value: riskStats.critical, color: '#DC2626' },
+            { name: 'High', value: riskStats.high, color: '#F59E0B' },
+            { name: 'Medium', value: risks.filter(r => r.impact_rating_id === 2).length, color: '#3B82F6' },
+            { name: 'Low', value: risks.filter(r => r.impact_rating_id === 1).length, color: '#10B981' }
+        ].filter(item => item.value > 0)
+    }, [riskStats, risks])
+
+    const incidentStatusData = useMemo(() => {
+        return [
+            { name: 'Open', value: incidentStats.open, color: '#F59E0B' },
+            { name: 'Closed', value: incidentStats.total - incidentStats.open, color: '#10B981' },
+            { name: 'Critical', value: incidentStats.critical, color: '#DC2626' }
+        ].filter(item => item.value > 0)
+    }, [incidentStats])
+
+    const assetStatusData = useMemo(() => {
+        return [
+            { name: 'Active', value: assetStats.active, color: '#10B981' },
+            { name: 'Inactive', value: assetStats.total - assetStats.active, color: '#9CA3AF' }
+        ].filter(item => item.value > 0)
+    }, [assetStats])
+
+    const complianceData = useMemo(() => {
+        return [
+            { name: 'Compliant', value: 8, color: '#10B981' },
+            { name: 'Non-Compliant', value: 2, color: '#DC2626' }
+        ]
+    }, [])
+
 
     const stats = useMemo(() => {
         return [
@@ -162,28 +219,28 @@ const DashboardContent = () => {
                 lastMonthDifference: users.length
             },
             {
-                title: 'Active Modules',
-                number: moduleStats.active,
-                icon: <Grid className="h-5 w-5" />,
-                statColor: 'text-emerald-600',
-                lastMonthDifference: moduleStats.active * 2
+                title: 'Critical Risks',
+                number: riskStats.critical,
+                icon: <AlertCircle className="h-5 w-5" />,
+                statColor: 'text-red-600',
+                lastMonthDifference: riskStats.critical
             },
             {
-                title: 'Total Licenses',
-                number: licenseEntries.length,
-                icon: <Shield className="h-5 w-5" />,
-                statColor: 'text-purple-600',
-                lastMonthDifference: licenseEntries.length
-            },
-            {
-                title: 'Audit Logs (24h)',
-                number: auditLogStats.last24Hours,
+                title: 'Open Incidents',
+                number: incidentStats.open,
                 icon: <Activity className="h-5 w-5" />,
-                statColor: 'text-amber-500',
-                lastMonthDifference: auditLogStats.last24Hours
+                statColor: 'text-yellow-600',
+                lastMonthDifference: incidentStats.open
+            },
+            {
+                title: 'Total Assets',
+                number: assetStats.total,
+                icon: <Package className="h-5 w-5" />,
+                statColor: 'text-cyan-600',
+                lastMonthDifference: assetStats.total
             },
         ]
-    }, [moduleStats, users, licenseEntries, auditLogStats, userRoleStats])
+    }, [users, riskStats, incidentStats, assetStats])
 
     const loading = modulesLoading || licensesLoading || usersLoading
 
@@ -326,7 +383,7 @@ const DashboardContent = () => {
         <div className="space-y-8">
             <PageSectionHeader
                 title="Dashboard"
-                subTitle="Monitor modules, licenses, and recent administrative activities"
+                subTitle="Comprehensive overview of all ProSuite modules: Risk Management, Incident Management, Asset Management, Compliance, Users, Licenses, and System Activity"
                 showImportExport={false}
             />
 
@@ -456,6 +513,116 @@ const DashboardContent = () => {
                 <Card className="overflow-visible">
                     <CardHeader>
                         <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900">Risk distribution by severity</h2>
+                            <span className="text-sm text-gray-500">{riskStats.total} total risks</span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-visible">
+                        {riskStats.total === 0 ? (
+                            <div className="flex min-h-[260px] items-center justify-center text-sm text-gray-500">
+                                No risk data available
+                            </div>
+                        ) : (
+                            <UniversalChart
+                                type="donut"
+                                data={riskDistributionData}
+                                config={{
+                                    nameKey: 'name',
+                                    valueKey: 'value',
+                                    colors: riskDistributionData.map(item => item.color),
+                                    loading: false,
+                                    height: 260
+                                }}
+                            />
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="overflow-visible">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900">Incident status</h2>
+                            <span className="text-sm text-gray-500">{incidentStats.total} total incidents</span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-visible">
+                        {incidentStats.total === 0 ? (
+                            <div className="flex min-h-[260px] items-center justify-center text-sm text-gray-500">
+                                No incident data available
+                            </div>
+                        ) : (
+                            <UniversalChart
+                                type="donut"
+                                data={incidentStatusData}
+                                config={{
+                                    nameKey: 'name',
+                                    valueKey: 'value',
+                                    colors: incidentStatusData.map(item => item.color),
+                                    loading: false,
+                                    height: 260
+                                }}
+                            />
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-visible">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900">Asset status</h2>
+                            <span className="text-sm text-gray-500">{assetStats.total} total assets</span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-visible">
+                        {assetStats.total === 0 ? (
+                            <div className="flex min-h-[260px] items-center justify-center text-sm text-gray-500">
+                                No asset data available
+                            </div>
+                        ) : (
+                            <UniversalChart
+                                type="donut"
+                                data={assetStatusData}
+                                config={{
+                                    nameKey: 'name',
+                                    valueKey: 'value',
+                                    colors: assetStatusData.map(item => item.color),
+                                    loading: false,
+                                    height: 260
+                                }}
+                            />
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="overflow-visible">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900">Compliance overview</h2>
+                            <span className="text-sm text-gray-500">10 standards</span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="overflow-visible">
+                        <UniversalChart
+                            type="donut"
+                            data={complianceData}
+                            config={{
+                                nameKey: 'name',
+                                valueKey: 'value',
+                                colors: complianceData.map(item => item.color),
+                                loading: false,
+                                height: 260
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-visible">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-gray-900">Module distribution</h2>
                             <span className="text-sm text-gray-500">{totalModuleCountForChart} modules</span>
                         </div>
@@ -482,217 +649,6 @@ const DashboardContent = () => {
                                     colors: moduleStatusChartData.map(item => item.color),
                                     loading: modulesLoading,
                                     height: 260
-                                }}
-                            />
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-900">Module status</h2>
-                        <span className="text-sm text-gray-500">{modules.length} total</span>
-                    </div>
-
-                    {loading ? (
-                        <div className="mt-6 space-y-4">
-                            {[...Array(3)].map((_, index) => (
-                                <div key={`module-skeleton-${index}`} className="h-12 animate-pulse rounded-lg bg-gray-100" />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="mt-6 space-y-4">
-                            {modules.slice(0, 5).map(module => (
-                                <div key={module.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{module.name}</p>
-                                        <p className="text-sm text-gray-500">{module.description}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${module.is_disable === 0
-                                            ? 'bg-red-100 text-red-600'
-                                            : ['active', 'activated'].includes(module.status_slug)
-                                                ? 'bg-emerald-100 text-emerald-600'
-                                                : 'bg-amber-100 text-amber-600'
-                                            }`}>
-                                            {module.is_disable === 0 ? 'Disabled' : module.status_name}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                            {modules.length > 5 ? (
-                                <p className="text-sm text-gray-500">Showing 5 of {modules.length} modules</p>
-                            ) : null}
-                        </div>
-                    )}
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-900">License usage</h2>
-                        <span className="text-sm text-gray-500">{licenseEntries.length} tracked modules</span>
-                    </div>
-
-                    {licensesLoading ? (
-                        <div className="mt-6 space-y-4">
-                            {[...Array(3)].map((_, index) => (
-                                <div key={`license-skeleton-${index}`} className="h-12 animate-pulse rounded-lg bg-gray-100" />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="mt-6 space-y-4">
-                            {licenseEntries.slice(0, 5).map(entry => {
-                                const utilisation = entry.totalLimit ? Math.round((entry.usage / entry.totalLimit) * 100) : 0
-
-                                return (
-                                    <div key={entry.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3">
-                                        <div>
-                                            <p className="font-medium text-gray-900">{entry.moduleName}</p>
-                                            <p className="text-sm text-gray-500">Status {entry.status}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium text-gray-900">{entry.usage} / {entry.totalLimit} users</p>
-                                            <p className="text-xs text-gray-500">{utilisation}% utilisation</p>
-                                            <p className="mt-1 text-xs text-gray-500">Admins {entry.adminCount}</p>
-                                            <p className="mt-1 text-xs text-gray-500">Request {entry.requestStatus}</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            {licenseEntries.length === 0 ? (
-                                <p className="text-sm text-gray-500">No license data available</p>
-                            ) : null}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <Card className="overflow-visible">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">User roles distribution</h2>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm text-gray-500">{userRoleStats.length} roles</span>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setRolesChartOrientation(prev => prev === 'vertical' ? 'horizontal' : 'vertical')}
-                                                className="h-8 px-3 gap-2 hover:bg-gray-50 border-gray-300"
-                                            >
-                                                <ArrowLeftRight className="h-4 w-4" />
-                                                <span className="text-xs font-medium">
-                                                    {rolesChartOrientation === 'vertical' ? 'Horizontal' : 'Vertical'}
-                                                </span>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Switch to {rolesChartOrientation === 'vertical' ? 'horizontal' : 'vertical'} view</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="overflow-visible">
-                        {usersLoading ? (
-                            <div className="flex h-[300px] flex-col justify-around px-4">
-                                {[85, 65, 45, 75, 55, 35].map((width, i) => (
-                                    <div key={i} className="flex items-center gap-4">
-                                        <Skeleton className="h-4 w-24" />
-                                        <Skeleton className="h-6 rounded-md" style={{ width: `${width}%` }} />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : userRoleStats.length === 0 ? (
-                            <div className="flex min-h-[300px] items-center justify-center text-sm text-gray-500">
-                                No role data available
-                            </div>
-                        ) : (
-                            <UniversalChart
-                                type={rolesChartOrientation === 'horizontal' ? 'horizontalBar' : 'bar'}
-                                data={userRoleStats.slice(0, 8)}
-                                config={{
-                                    xAxisKey: 'name',
-                                    yAxisKeys: [{ dataKey: 'value', name: 'Users', color: '#6366F1' }],
-                                    loading: usersLoading,
-                                    height: 300,
-                                    showLegend: false,
-                                    showLabel: true,
-                                    labelPosition: rolesChartOrientation === 'horizontal' ? 'right' : 'top',
-                                    formatter: (value: number) => value.toString()
-                                }}
-                            />
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card className="overflow-visible">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">System activity</h2>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm text-gray-500">{auditLogStats.total} total logs</span>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setActivityChartOrientation(prev => prev === 'vertical' ? 'horizontal' : 'vertical')}
-                                                className="h-8 px-3 gap-2 hover:bg-gray-50 border-gray-300"
-                                            >
-                                                <ArrowLeftRight className="h-4 w-4" />
-                                                <span className="text-xs font-medium">
-                                                    {activityChartOrientation === 'vertical' ? 'Horizontal' : 'Vertical'}
-                                                </span>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Switch to {activityChartOrientation === 'vertical' ? 'horizontal' : 'vertical'} view</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="overflow-visible">
-                        {adminAuditLogsLoading ? (
-                            <div className="flex h-[300px] items-end justify-between px-4 pb-4">
-                                {[30, 50, 40, 70, 45, 60, 35, 55].map((height, i) => (
-                                    <Skeleton
-                                        key={i}
-                                        className="w-8 rounded-t-md"
-                                        style={{ height: `${height}%` }}
-                                    />
-                                ))}
-                            </div>
-                        ) : activityByTypeData.length === 0 ? (
-                            <div className="flex min-h-[300px] items-center justify-center text-sm text-gray-500">
-                                No activity data available
-                            </div>
-                        ) : (
-                            <UniversalChart
-                                type={activityChartOrientation === 'horizontal' ? 'horizontalBar' : 'bar'}
-                                data={activityByTypeData}
-                                config={{
-                                    xAxisKey: 'name',
-                                    yAxisKeys: [{ dataKey: 'value', name: 'Actions', color: '#F59E0B' }],
-                                    loading: adminAuditLogsLoading,
-                                    height: 300,
-                                    showLegend: false,
-                                    showLabel: true,
-                                    labelPosition: activityChartOrientation === 'horizontal' ? 'right' : 'top',
-                                    formatter: (value: number) => value.toString()
                                 }}
                             />
                         )}
