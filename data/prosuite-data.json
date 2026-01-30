@@ -1,0 +1,1 @@
+{"metadata":{"version":"2.0"},"core":{"tenants":[{"id":1,"tenant_name":"Acme Financial Services"}],"users":[],"departments":[],"modules":[]},"risk":{"risks":[]},"asset":{"assets":[]},"incident":{"incidents":[]},"audit":{"audit_engagements":[]},"compliance":{"compliance_packages":[]},"governance":{"governance_policies":[]}}
