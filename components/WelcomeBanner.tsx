@@ -16,7 +16,7 @@ export default function WelcomeBanner({ userName = 'Sbongakonke' }: WelcomeBanne
 
       {/* Content */}
       <div className="relative z-10">
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-black mb-2">
           Good morning {userName}
         </h1>
         <p className="text-prosuite-100 text-lg">
