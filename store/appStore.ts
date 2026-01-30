@@ -12,9 +12,10 @@ interface AppState {
   setIsHovering: (hovering: boolean) => void;
   setHoverTimeout: (timeoutId: NodeJS.Timeout | null) => void;
   setActiveMenuLabel: (label: string | null) => void;
+  getActiveMenuItemWithFilteredSecondaryMenu: (moduleStatuses?: any[]) => any;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   isSecondarySidebarVisible: false,
   isSecondarySidebarPinned: false,
   isHovering: false,
@@ -35,4 +36,9 @@ export const useAppStore = create<AppState>((set) => ({
   
   setActiveMenuLabel: (label) => 
     set({ activeMenuLabel: label }),
+  
+  getActiveMenuItemWithFilteredSecondaryMenu: (moduleStatuses = []) => {
+    // Return null for now - can be implemented later if needed
+    return null;
+  },
 }));
